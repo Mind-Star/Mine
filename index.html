@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spotify Playlist Cleaner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg:        #0a0a0f;
+      --surface:   #111118;
+      --card:      #16161f;
+      --border:    #252535;
+      --green:     #1db954;
+      --green-dim: #158a3e;
+      --red:       #e05252;
+      --amber:     #e8a838;
+      --text:      #e8e8f0;
+      --muted:     #6e6e88;
+      --radius:    12px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* ── Layout ── */
+    .shell {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 48px 20px 80px;
+    }
+
+    /* ── Logo / Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 48px;
+    }
+    .logo-icon {
+      width: 44px; height: 44px;
+      background: var(--green);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .logo-icon svg { width: 26px; height: 26px; fill: #000; }
+    h1 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+    h1 span { color: var(--green); }
+
+    /* ── Steps ── */
+    .step {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px 28px 24px;
+      margin-bottom: 16px;
+    }
+    .step-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: var(--green);
+      margin-bottom: 6px;
+    }
+    .step h2 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 17px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    .step p, .step small {
+      color: var(--muted);
+      font-size: 13.5px;
+    }
+    .step a { color: var(--green); text-decoration: none; }
+    .step a:hover { text-decoration: underline; }
+
+    /* ── Redirect URI display ── */
+    .uri-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin: 14px 0 10px;
+      font-family: monospace;
+      font-size: 13px;
+      color: var(--text);
+      word-break: break-all;
+    }
+    .uri-copy {
+      flex-shrink: 0;
+      background: var(--border);
+      border: none;
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 12px;
+      padding: 5px 10px;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .uri-copy:hover { background: #303050; }
+
+    /* ── Inputs ── */
+    input[type="text"], input[type="password"] {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 14px;
+      padding: 10px 14px;
+      margin-top: 12px;
+      outline: none;
+      transition: border-color .15s;
+    }
+    input[type="text"]:focus, input[type="password"]:focus {
+      border-color: var(--green);
+    }
+    input::placeholder { color: var(--muted); }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 11px 24px;
+      transition: opacity .15s, transform .1s;
+    }
+    .btn:active { transform: scale(.97); }
+    .btn-green  { background: var(--green); color: #000; margin-top: 16px; }
+    .btn-green:hover { opacity: .88; }
+    .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); margin-top: 12px; }
+    .btn-outline:hover { border-color: var(--green); color: var(--green); }
+    .btn-red    { background: var(--red); color: #fff; margin-top: 12px; }
+    .btn-red:hover { opacity: .85; }
+    .btn-sm     { font-size: 13px; padding: 7px 16px; }
+    .btn:disabled { opacity: .4; cursor: default; }
+
+    /* ── Playlist grid ── */
+    #playlist-section { display: none; }
+    .playlist-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-height: 360px;
+      overflow-y: auto;
+      margin-top: 16px;
+      padding-right: 4px;
+    }
+    .playlist-grid::-webkit-scrollbar { width: 4px; }
+    .playlist-grid::-webkit-scrollbar-track { background: transparent; }
+    .playlist-grid::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    .playlist-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+    }
+    .playlist-item:hover { border-color: var(--green); background: #13131c; }
+    .playlist-item.selected { border-color: var(--green); background: #0f1f15; }
+    .playlist-img {
+      width: 46px; height: 46px;
+      border-radius: 6px;
+      object-fit: cover;
+      background: var(--border);
+      flex-shrink: 0;
+    }
+    .playlist-info { flex: 1; min-width: 0; }
+    .playlist-name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .playlist-meta { color: var(--muted); font-size: 12.5px; margin-top: 1px; }
+    .playlist-arrow { color: var(--muted); font-size: 18px; flex-shrink: 0; }
+
+    /* ── Analysis panel ── */
+    #analysis-section { display: none; }
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin: 20px 0;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      text-align: center;
+    }
+    .stat-number {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1;
+    }
+    .stat-number.red   { color: var(--red); }
+    .stat-number.amber { color: var(--amber); }
+    .stat-number.green { color: var(--green); }
+    .stat-label { color: var(--muted); font-size: 12px; margin-top: 4px; }
+
+    /* ── Issues list ── */
+    .issues-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin: 16px 0;
+      max-height: 300px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+    .issues-list::-webkit-scrollbar { width: 4px; }
+    .issues-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    .issue-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+    }
+    .issue-badge {
+      flex-shrink: 0;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 20px;
+      margin-top: 2px;
+    }
+    .badge-dup  { background: #3a1a1a; color: var(--red); }
+    .badge-cover { background: #2d2500; color: var(--amber); }
+    .issue-text { flex: 1; font-size: 13.5px; }
+    .issue-title { font-weight: 600; }
+    .issue-sub   { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+
+    /* ── Progress / log ── */
+    #progress-section { display: none; }
+    .progress-bar-wrap {
+      background: var(--border);
+      border-radius: 50px;
+      height: 6px;
+      margin: 16px 0 8px;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--green);
+      border-radius: 50px;
+      width: 0%;
+      transition: width .3s ease;
+    }
+    .log-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      font-size: 13px;
+      color: var(--muted);
+      max-height: 200px;
+      overflow-y: auto;
+      margin-top: 12px;
+      line-height: 1.8;
+    }
+    .log-box .ok   { color: var(--green); }
+    .log-box .warn { color: var(--amber); }
+    .log-box .err  { color: var(--red); }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 50px;
+      padding: 10px 22px;
+      font-size: 13.5px;
+      font-weight: 500;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity .2s, transform .2s;
+      white-space: nowrap;
+      z-index: 999;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ── Utility ── */
+    .hidden { display: none !important; }
+    .flex-gap { display: flex; gap: 10px; flex-wrap: wrap; }
+    .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+    .success-banner {
+      background: #0c2016;
+      border: 1px solid #1db954;
+      border-radius: 10px;
+      padding: 14px 18px;
+      color: var(--green);
+      font-weight: 600;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    @media (max-width: 500px) {
+      .shell { padding: 28px 14px 60px; }
+      .stats-row { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+      .stat-number { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- Header -->
+  <header>
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424a.622.622 0 0 1-.857.207c-2.348-1.435-5.304-1.76-8.785-.964a.622.622 0 1 1-.277-1.215c3.809-.87 7.077-.495 9.713 1.115a.623.623 0 0 1 .206.857zm1.223-2.723a.78.78 0 0 1-1.072.257c-2.687-1.652-6.785-2.131-9.965-1.166a.78.78 0 0 1-.973-.519.781.781 0 0 1 .52-.972c3.632-1.102 8.147-.568 11.233 1.328a.779.779 0 0 1 .257 1.072zm.105-2.835C14.692 8.95 9.375 8.775 6.297 9.71a.937.937 0 1 1-.543-1.79c3.532-1.072 9.404-.865 13.115 1.337a.937.937 0 0 1-.955 1.609z"/>
+      </svg>
+    </div>
+    <div>
+      <h1>Spotify <span>Playlist Cleaner</span></h1>
+      <div style="color:var(--muted);font-size:13px;">Remove duplicates · Replace non-original artists</div>
+    </div>
+  </header>
+
+  <!-- ── STEP 1: Redirect URI ── -->
+  <div class="step" id="step-uri">
+    <div class="step-label">Step 1</div>
+    <h2>Add a Redirect URI to your Spotify app</h2>
+    <p>Open your <a href="https://developer.spotify.com/dashboard" target="_blank">Spotify Developer Dashboard</a>, select your app (or create one), go to <strong>Settings → Redirect URIs</strong> and add the URI below exactly.</p>
+    <div class="uri-box">
+      <span id="redirect-uri-text">Loading…</span>
+      <button class="uri-copy" onclick="copyURI()">Copy</button>
+    </div>
+    <small>Once added, save the settings in the dashboard, then continue.</small>
+  </div>
+
+  <!-- ── STEP 2: Client ID ── -->
+  <div class="step" id="step-cid">
+    <div class="step-label">Step 2</div>
+    <h2>Paste your Client ID</h2>
+    <p>Find it on the overview page of your app in the <a href="https://developer.spotify.com/dashboard" target="_blank">Developer Dashboard</a>.</p>
+    <input type="text" id="client-id-input" placeholder="e.g. 4b3f9c1d2e8a…" autocomplete="off" spellcheck="false" />
+    <br />
+    <button class="btn btn-green" id="login-btn" onclick="startLogin()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424a.622.622 0 0 1-.857.207c-2.348-1.435-5.304-1.76-8.785-.964a.622.622 0 1 1-.277-1.215c3.809-.87 7.077-.495 9.713 1.115a.623.623 0 0 1 .206.857zm1.223-2.723a.78.78 0 0 1-1.072.257c-2.687-1.652-6.785-2.131-9.965-1.166a.78.78 0 0 1-.973-.519.781.781 0 0 1 .52-.972c3.632-1.102 8.147-.568 11.233 1.328a.779.779 0 0 1 .257 1.072zm.105-2.835C14.692 8.95 9.375 8.775 6.297 9.71a.937.937 0 1 1-.543-1.79c3.532-1.072 9.404-.865 13.115 1.337a.937.937 0 0 1-.955 1.609z"/></svg>
+      Connect with Spotify
+    </button>
+  </div>
+
+  <!-- ── Playlist Picker ── -->
+  <div class="step" id="playlist-section">
+    <div class="step-label">Step 3</div>
+    <h2>Pick a playlist to clean</h2>
+    <p>Select one of your playlists. The cleaner will scan it for duplicates and non-original artist versions.</p>
+    <div class="playlist-grid" id="playlist-grid">
+      <!-- injected -->
+    </div>
+    <div class="flex-gap" style="margin-top:16px;">
+      <button class="btn btn-green" id="analyze-btn" onclick="analyzePlaylist()" disabled>
+        Scan for issues →
+      </button>
+      <button class="btn btn-outline btn-sm" onclick="logout()">Switch account</button>
+    </div>
+  </div>
+
+  <!-- ── Analysis ── -->
+  <div class="step" id="analysis-section">
+    <div class="flex-gap" style="align-items:center;justify-content:space-between;">
+      <div>
+        <div class="step-label">Analysis</div>
+        <h2 id="analysis-title">—</h2>
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="backToPlaylists()">← Back</button>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-number" id="stat-total">—</div>
+        <div class="stat-label">Total tracks</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number red" id="stat-dups">—</div>
+        <div class="stat-label">Duplicates</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number amber" id="stat-covers">—</div>
+        <div class="stat-label">Non-original</div>
+      </div>
+    </div>
+
+    <div id="clean-banner" class="success-banner hidden">
+      ✓ Playlist is already clean — no issues found.
+    </div>
+
+    <div id="issues-wrap">
+      <div class="issues-list" id="issues-list"></div>
+      <div class="flex-gap" style="margin-top:4px;">
+        <button class="btn btn-green" id="clean-btn" onclick="cleanPlaylist()">
+          🧹 Clean playlist
+        </button>
+        <button class="btn btn-outline btn-sm" onclick="backToPlaylists()">Choose another</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Progress ── -->
+  <div class="step" id="progress-section">
+    <div class="step-label">Cleaning</div>
+    <h2 id="progress-title">Working…</h2>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" id="progress-fill"></div>
+    </div>
+    <div id="progress-label" style="color:var(--muted);font-size:13px;"></div>
+    <div class="log-box" id="log-box"></div>
+    <button class="btn btn-outline btn-sm hidden" id="done-btn" onclick="backToPlaylists()" style="margin-top:16px;">
+      Clean another playlist
+    </button>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ═══════════════════════════════════════════
+   CONFIG & GLOBALS
+═══════════════════════════════════════════ */
+const REDIRECT_URI = window.location.origin + window.location.pathname.replace(/\/+$/, '') + '/';
+const SCOPES = [
+  'playlist-read-private',
+  'playlist-read-collaborative',
+  'playlist-modify-public',
+  'playlist-modify-private'
+].join(' ');
+
+let accessToken = null;
+let selectedPlaylist = null;
+let analysisResult = null;
+
+/* ═══════════════════════════════════════════
+   PKCE HELPERS
+═══════════════════════════════════════════ */
+function generateRandom(len) {
+  const arr = new Uint8Array(len);
+  crypto.getRandomValues(arr);
+  return btoa(String.fromCharCode(...arr))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+async function sha256(plain) {
+  const enc = new TextEncoder().encode(plain);
+  const hash = await crypto.subtle.digest('SHA-256', enc);
+  return btoa(String.fromCharCode(...new Uint8Array(hash)))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+/* ═══════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', async () => {
+  document.getElementById('redirect-uri-text').textContent = REDIRECT_URI;
+
+  // Restore saved client ID
+  const saved = localStorage.getItem('sp_client_id');
+  if (saved) document.getElementById('client-id-input').value = saved;
+
+  // Handle PKCE callback: ?code=...
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('code');
+  if (code) {
+    history.replaceState(null, '', window.location.pathname);
+    await exchangeCode(code);
+  } else {
+    // Try stored token
+    const stored = sessionStorage.getItem('sp_access_token');
+    if (stored) {
+      accessToken = stored;
+      onLoggedIn();
+    }
+  }
+});
+
+/* ═══════════════════════════════════════════
+   AUTH  (Authorization Code + PKCE)
+═══════════════════════════════════════════ */
+function getClientId() {
+  return document.getElementById('client-id-input').value.trim();
+}
+
+async function startLogin() {
+  const cid = getClientId();
+  if (!cid) { toast('Paste your Client ID first'); return; }
+  localStorage.setItem('sp_client_id', cid);
+
+  const verifier = generateRandom(64);
+  const challenge = await sha256(verifier);
+  sessionStorage.setItem('sp_verifier', verifier);
+  sessionStorage.setItem('sp_client_id', cid);
+
+  const url = 'https://accounts.spotify.com/authorize?' + new URLSearchParams({
+    client_id:             cid,
+    response_type:         'code',
+    redirect_uri:          REDIRECT_URI,
+    scope:                 SCOPES,
+    code_challenge_method: 'S256',
+    code_challenge:        challenge,
+  });
+  window.location.href = url;
+}
+
+async function exchangeCode(code) {
+  const verifier  = sessionStorage.getItem('sp_verifier');
+  const clientId  = sessionStorage.getItem('sp_client_id') || localStorage.getItem('sp_client_id');
+  if (!verifier || !clientId) {
+    toast('Session expired — please reconnect');
+    return;
+  }
+  try {
+    const res = await fetch('https://accounts.spotify.com/api/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type:    'authorization_code',
+        code,
+        redirect_uri:  REDIRECT_URI,
+        client_id:     clientId,
+        code_verifier: verifier,
+      })
+    });
+    const data = await res.json();
+    if (data.access_token) {
+      accessToken = data.access_token;
+      sessionStorage.setItem('sp_access_token', accessToken);
+      sessionStorage.removeItem('sp_verifier');
+      onLoggedIn();
+    } else {
+      toast('Auth failed: ' + (data.error_description || data.error));
+    }
+  } catch (e) {
+    toast('Token exchange failed: ' + e.message);
+  }
+}
+
+function logout() {
+  accessToken = null;
+  selectedPlaylist = null;
+  sessionStorage.removeItem('sp_access_token');
+  hide('playlist-section');
+  show('step-uri');
+  show('step-cid');
+}
+
+function onLoggedIn() {
+  hide('step-uri');
+  hide('step-cid');
+  show('playlist-section');
+  loadPlaylists();
+}
+
+/* ═══════════════════════════════════════════
+   SPOTIFY API
+═══════════════════════════════════════════ */
+async function spotifyFetch(url, opts = {}) {
+  const res = await fetch(url, {
+    ...opts,
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+      ...(opts.headers || {})
+    }
+  });
+  if (res.status === 204) return null;
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+async function getAllPages(url) {
+  let items = [], next = url;
+  while (next) {
+    const data = await spotifyFetch(next);
+    items = items.concat(data.items);
+    next = data.next;
+  }
+  return items;
+}
+
+async function loadPlaylists() {
+  const grid = document.getElementById('playlist-grid');
+  grid.innerHTML = '<div style="color:var(--muted);padding:8px 0">Loading your playlists…</div>';
+  try {
+    const me = await spotifyFetch('https://api.spotify.com/v1/me');
+    const playlists = await getAllPages('https://api.spotify.com/v1/me/playlists?limit=50');
+    grid.innerHTML = '';
+    if (!playlists.length) {
+      grid.innerHTML = '<div style="color:var(--muted)">No playlists found.</div>';
+      return;
+    }
+    playlists.forEach(pl => {
+      if (!pl) return;
+      const img = pl.images?.[0]?.url || '';
+      const div = document.createElement('div');
+      div.className = 'playlist-item';
+      div.dataset.id = pl.id;
+      div.innerHTML = `
+        ${img ? `<img class="playlist-img" src="${img}" alt="" />` : `<div class="playlist-img"></div>`}
+        <div class="playlist-info">
+          <div class="playlist-name">${esc(pl.name)}</div>
+          <div class="playlist-meta">${pl.tracks.total} tracks</div>
+        </div>
+        <div class="playlist-arrow">›</div>
+      `;
+      div.onclick = () => selectPlaylist(pl, div);
+      grid.appendChild(div);
+    });
+  } catch (e) {
+    grid.innerHTML = `<div style="color:var(--red)">Error: ${esc(e.message)}</div>`;
+  }
+}
+
+function selectPlaylist(pl, el) {
+  document.querySelectorAll('.playlist-item').forEach(d => d.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedPlaylist = pl;
+  document.getElementById('analyze-btn').disabled = false;
+}
+
+/* ═══════════════════════════════════════════
+   ANALYSIS
+═══════════════════════════════════════════ */
+async function analyzePlaylist() {
+  if (!selectedPlaylist) return;
+  hide('playlist-section');
+  show('analysis-section');
+  document.getElementById('analysis-title').textContent = selectedPlaylist.name;
+  document.getElementById('stat-total').textContent = '…';
+  document.getElementById('stat-dups').textContent = '…';
+  document.getElementById('stat-covers').textContent = '…';
+  document.getElementById('issues-list').innerHTML = '';
+  hide('clean-banner');
+  hide('issues-wrap');
+
+  try {
+    const rawItems = await getAllPages(
+      `https://api.spotify.com/v1/playlists/${selectedPlaylist.id}/tracks?limit=100`
+    );
+
+    // Filter out null / local tracks
+    const items = rawItems.filter(it => it?.track?.id && !it.track.is_local);
+
+    const duplicates = findDuplicates(items);
+    const covers = await findCovers(items);
+
+    const totalIssues = duplicates.length + covers.length;
+    document.getElementById('stat-total').textContent  = items.length;
+    document.getElementById('stat-dups').textContent   = duplicates.length;
+    document.getElementById('stat-covers').textContent = covers.length;
+
+    analysisResult = { items, duplicates, covers };
+
+    if (totalIssues === 0) {
+      show('clean-banner');
+      hide('issues-wrap');
+    } else {
+      hide('clean-banner');
+      show('issues-wrap');
+      renderIssues(duplicates, covers);
+    }
+  } catch (e) {
+    document.getElementById('issues-list').innerHTML =
+      `<div style="color:var(--red);padding:8px 0">Error: ${esc(e.message)}</div>`;
+    show('issues-wrap');
+  }
+}
+
+function findDuplicates(items) {
+  const seen = new Map(); // normalised key → first occurrence index
+  const dupes = [];
+  items.forEach((item, idx) => {
+    const t = item.track;
+    const key = normKey(t.name) + '|' + t.artists.map(a => normKey(a.name)).sort().join(',');
+    if (seen.has(key)) {
+      dupes.push({ item, idx, firstIdx: seen.get(key) });
+    } else {
+      seen.set(key, idx);
+    }
+  });
+  return dupes;
+}
+
+async function findCovers(items) {
+  const covers = [];
+  // For each track, check if it's on a various-artists or "tribute" / "karaoke" / "cover" album,
+  // or if the primary artist name contains those keywords.
+  const suspectPatterns = [
+    /\btribute\b/i, /\bkaraoke\b/i, /\bcover\b/i, /\bvarious\b/i,
+    /\bperformed by\b/i, /\bmade famous\b/i, /\boriginally\b/i,
+    /\bsoundalike\b/i, /\bcoverband\b/i
+  ];
+  for (const item of items) {
+    const t = item.track;
+    const artistNames = t.artists.map(a => a.name).join(' ');
+    const albumName   = t.album?.name || '';
+    const isSuspect = suspectPatterns.some(p => p.test(artistNames) || p.test(albumName));
+    if (isSuspect) {
+      covers.push({ item, artistNames, albumName });
+    }
+  }
+  return covers;
+}
+
+function renderIssues(duplicates, covers) {
+  const list = document.getElementById('issues-list');
+  list.innerHTML = '';
+
+  duplicates.forEach(({ item, firstIdx }) => {
+    const t = item.track;
+    const row = document.createElement('div');
+    row.className = 'issue-row';
+    row.innerHTML = `
+      <span class="issue-badge badge-dup">Duplicate</span>
+      <div class="issue-text">
+        <div class="issue-title">${esc(t.name)}</div>
+        <div class="issue-sub">${esc(t.artists.map(a=>a.name).join(', '))} — copy will be removed</div>
+      </div>`;
+    list.appendChild(row);
+  });
+
+  covers.forEach(({ item, artistNames, albumName }) => {
+    const t = item.track;
+    const row = document.createElement('div');
+    row.className = 'issue-row';
+    row.innerHTML = `
+      <span class="issue-badge badge-cover">Non-original</span>
+      <div class="issue-text">
+        <div class="issue-title">${esc(t.name)}</div>
+        <div class="issue-sub">${esc(artistNames)} · Album: ${esc(albumName)} — will search for original</div>
+      </div>`;
+    list.appendChild(row);
+  });
+}
+
+/* ═══════════════════════════════════════════
+   CLEANING
+═══════════════════════════════════════════ */
+async function cleanPlaylist() {
+  if (!analysisResult) return;
+  const { items, duplicates, covers } = analysisResult;
+  hide('analysis-section');
+  show('progress-section');
+  document.getElementById('progress-title').textContent = `Cleaning "${selectedPlaylist.name}"…`;
+  const total = duplicates.length + covers.length;
+  let done = 0;
+
+  function setProgress(n, label) {
+    document.getElementById('progress-fill').style.width = (n / Math.max(total, 1) * 100) + '%';
+    document.getElementById('progress-label').textContent = label;
+  }
+
+  function log(msg, cls = '') {
+    const box = document.getElementById('log-box');
+    const line = document.createElement('div');
+    if (cls) line.className = cls;
+    line.textContent = msg;
+    box.appendChild(line);
+    box.scrollTop = box.scrollHeight;
+  }
+
+  const playlistId = selectedPlaylist.id;
+
+  // 1. Remove duplicates (remove by track URI + position for safety)
+  for (const { item, idx } of duplicates) {
+    const t = item.track;
+    try {
+      await spotifyFetch(
+        `https://api.spotify.com/v1/playlists/${playlistId}/tracks`,
+        {
+          method: 'DELETE',
+          body: JSON.stringify({ tracks: [{ uri: t.uri, positions: [idx] }] })
+        }
+      );
+      log(`✓ Removed duplicate: ${t.name} – ${t.artists[0]?.name}`, 'ok');
+    } catch (e) {
+      log(`✗ Could not remove "${t.name}": ${e.message}`, 'err');
+    }
+    done++;
+    setProgress(done, `Removing duplicates… (${done}/${total})`);
+    await delay(300);
+  }
+
+  // 2. Replace covers with originals
+  for (const { item } of covers) {
+    const t = item.track;
+    const originalName = t.name.replace(/\(.*?\)/g, '').trim(); // strip (Karaoke version) etc.
+    const q = encodeURIComponent(`track:${originalName} artist:${t.artists[0]?.name || ''}`);
+    try {
+      // Search Spotify for the original
+      const search = await spotifyFetch(
+        `https://api.spotify.com/v1/search?q=${q}&type=track&limit=10`
+      );
+      const original = pickBestOriginal(search.tracks?.items || [], t);
+      if (original && original.uri !== t.uri) {
+        // Add original before removing the cover so position stays roughly right
+        await spotifyFetch(
+          `https://api.spotify.com/v1/playlists/${playlistId}/tracks`,
+          { method: 'POST', body: JSON.stringify({ uris: [original.uri] }) }
+        );
+        await spotifyFetch(
+          `https://api.spotify.com/v1/playlists/${playlistId}/tracks`,
+          { method: 'DELETE', body: JSON.stringify({ tracks: [{ uri: t.uri }] }) }
+        );
+        log(`✓ Replaced non-original "${t.name}" → ${original.artists[0]?.name} (${original.album?.name})`, 'ok');
+      } else {
+        log(`~ Could not find a better original for "${t.name}" — left as-is`, 'warn');
+      }
+    } catch (e) {
+      log(`✗ Error replacing "${t.name}": ${e.message}`, 'err');
+    }
+    done++;
+    setProgress(done, `Replacing non-originals… (${done}/${total})`);
+    await delay(400);
+  }
+
+  setProgress(total, 'Done!');
+  document.getElementById('progress-title').textContent = 'Playlist cleaned ✓';
+  show('done-btn');
+}
+
+/**
+ * From search results, pick the track that is most likely the original recording.
+ * Prefers: non-tribute/karaoke albums, official Spotify popularity, matching artist name.
+ */
+function pickBestOriginal(results, original) {
+  const badPatterns = /\btribute\b|\bkaraoke\b|\bcover\b|\bvarious\b|\bsoundalike\b/i;
+  const origArtist = normKey(original.artists[0]?.name || '');
+  const origName   = normKey(original.name.replace(/\(.*?\)/g, '').trim());
+
+  const candidates = results.filter(t => {
+    const artistMatch = t.artists.some(a => normKey(a.name) === origArtist);
+    const nameMatch   = normKey(t.name.replace(/\(.*?\)/g, '').trim()) === origName;
+    const notBad      = !badPatterns.test(t.artists.map(a=>a.name).join(' ')) &&
+                        !badPatterns.test(t.album?.name || '');
+    return artistMatch && nameMatch && notBad;
+  });
+
+  if (!candidates.length) return null;
+  // Highest popularity wins
+  return candidates.sort((a, b) => b.popularity - a.popularity)[0];
+}
+
+/* ═══════════════════════════════════════════
+   NAV HELPERS
+═══════════════════════════════════════════ */
+function backToPlaylists() {
+  hide('analysis-section');
+  hide('progress-section');
+  show('playlist-section');
+  selectedPlaylist = null;
+  analysisResult   = null;
+  document.getElementById('analyze-btn').disabled = true;
+  document.querySelectorAll('.playlist-item').forEach(d => d.classList.remove('selected'));
+}
+
+/* ═══════════════════════════════════════════
+   UTILITIES
+═══════════════════════════════════════════ */
+function normKey(str) {
+  return str.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function esc(str) {
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function show(id) { document.getElementById(id).style.display = ''; }
+function hide(id) { document.getElementById(id).style.display = 'none'; }
+
+function copyURI() {
+  const uri = document.getElementById('redirect-uri-text').textContent;
+  navigator.clipboard.writeText(uri).then(() => toast('Redirect URI copied!'));
+}
+
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+}
+
+// Initial hide of later sections
+document.getElementById('playlist-section').style.display  = 'none';
+document.getElementById('analysis-section').style.display  = 'none';
+document.getElementById('progress-section').style.display  = 'none';
+</script>
+</body>
+</html>
